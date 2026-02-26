@@ -1,32 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/sidebar/AppSidebar";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 import { HistoryPanel } from "@/components/history/HistoryPanel";
 import { SmartHomePanel } from "@/components/smarthome/SmartHomePanel";
 import { AutomationPanel } from "@/components/automation/AutomationPanel";
+import { VisionPanel } from "@/components/vision/VisionPanel";
 import { useAssistant } from "@/hooks/use-assistant";
+import { useUser } from "@/firebase";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { 
   Search, 
   HelpCircle, 
   Bell, 
-  Settings, 
   ChevronRight,
   Monitor,
   Volume2,
   Sun,
   Wifi,
-  Zap
+  Zap,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("assistant");
   const assistant = useAssistant();
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/auth');
+    }
+  }, [user, isUserLoading, router]);
+
+  if (isUserLoading || !user) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider defaultOpen={true}>
@@ -34,7 +53,6 @@ export default function Home() {
         <AppSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
         
         <SidebarInset className="flex flex-col flex-1 bg-background">
-          {/* Main Top Header */}
           <header className="h-16 border-b border-border flex items-center justify-between px-6 bg-background/50 backdrop-blur-md sticky top-0 z-10">
             <div className="flex items-center gap-4">
               <SidebarTrigger />
@@ -55,13 +73,14 @@ export default function Home() {
               <Separator orientation="vertical" className="h-4" />
               <div className="flex items-center gap-3 pl-2">
                 <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center border border-primary/40">
-                  <span className="text-xs font-bold text-primary">JD</span>
+                  <span className="text-xs font-bold text-primary">
+                    {user?.email?.substring(0, 2).toUpperCase() || 'AI'}
+                  </span>
                 </div>
               </div>
             </div>
           </header>
 
-          {/* Dynamic Main Content */}
           <main className="flex-1 overflow-hidden flex">
             <div className="flex-1 relative overflow-y-auto">
               {activeTab === 'assistant' && (
@@ -75,8 +94,8 @@ export default function Home() {
               {activeTab === 'history' && <HistoryPanel history={assistant.history} />}
               {activeTab === 'devices' && <SmartHomePanel />}
               {activeTab === 'automations' && <AutomationPanel />}
+              {activeTab === 'vision' && <VisionPanel />}
 
-              {/* Quick Status Bar at bottom of central panel */}
               {activeTab === 'assistant' && (
                 <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-6 px-8 py-3 bg-muted/20 backdrop-blur-xl border border-muted/30 rounded-2xl">
                   <div className="flex items-center gap-2">
@@ -93,7 +112,6 @@ export default function Home() {
               )}
             </div>
 
-            {/* Right Sidebar - Contextual Actions */}
             <aside className="w-80 border-l border-border bg-muted/5 flex flex-col hidden xl:flex">
               <div className="p-6 space-y-8">
                 <div>

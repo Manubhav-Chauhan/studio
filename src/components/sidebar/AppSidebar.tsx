@@ -7,7 +7,9 @@ import {
   Zap, 
   Command,
   LayoutDashboard,
-  BrainCircuit
+  BrainCircuit,
+  Eye,
+  LogOut
 } from "lucide-react";
 import { 
   Sidebar, 
@@ -20,7 +22,8 @@ import {
   SidebarGroup,
   SidebarGroupLabel
 } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/firebase";
+import { signOut } from "firebase/auth";
 
 interface AppSidebarProps {
   activeTab: string;
@@ -28,6 +31,12 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ activeTab, setActiveTab }: AppSidebarProps) {
+  const auth = useAuth();
+
+  const handleSignOut = () => {
+    signOut(auth);
+  };
+
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border shadow-xl">
       <SidebarHeader className="h-16 flex items-center px-4">
@@ -53,6 +62,16 @@ export function AppSidebar({ activeTab, setActiveTab }: AppSidebarProps) {
               >
                 <LayoutDashboard />
                 <span>Assistant</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton 
+                isActive={activeTab === 'vision'} 
+                onClick={() => setActiveTab('vision')}
+                tooltip="Visual Recognition"
+              >
+                <Eye />
+                <span>Vision</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
@@ -101,6 +120,12 @@ export function AppSidebar({ activeTab, setActiveTab }: AppSidebarProps) {
               <SidebarMenuButton tooltip="Settings">
                 <Settings />
                 <span>Preferences</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={handleSignOut} tooltip="Sign Out">
+                <LogOut />
+                <span>Sign Out</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
