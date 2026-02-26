@@ -1,0 +1,133 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * ASSISTAI SECURITY RULES
+     *
+     * CORE PHILOSOPHY:
+     * This ruleset enforces a strict User-Ownership model. The architecture is designed 
+     * around the principle that a user should only ever access data nested under their 
+     * own unique identifier.
+     *
+     * DATA STRUCTURE:
+     * All application data is organized hierarchically under the path /users/{userId}. 
+     * This includes profiles, logs, smart device configurations, and automation workflows.
+     *
+     * KEY SECURITY DECISIONS:
+     * 1. Path-Based Authorization: The {userId} wildcard in the document path is the primary 
+     *    source of truth for authorization. It must match the authenticated user's UID.
+     * 2. Authorization Independence: Critical fields (like 'userId' or 'id') are denormalized 
+     *    directly into documents. This allows rules to verify ownership and relational 
+     *    integrity without expensive get() calls to parent documents.
+     * 3. Prototyping Flexibility: While ownership is strictly enforced, the rules do not 
+     *    validate the specific schema of content fields, allowing for rapid frontend iteration.
+     * 4. Private by Default: No data is accessible publicly. All read and write operations 
+     *    require a valid, matching Firebase Authentication session.
+     */
+
+    // --- Helper Functions ---
+
+    /** @description Checks if the request is from a signed-in user. */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** @description Checks if the provided ID matches the authenticated user's UID. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /** @description Combined check for ownership and document existence for write operations. */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    // --- Collection Rules ---
+
+    /**
+     * @description Rules for user profile documents. The document ID must be the user's UID.
+     * @path /users/{userId}
+     * @allow (get) If the requester's UID is 'user_123' and the path is /users/user_123.
+     * @deny (list) If the requester tries to list all user profiles.
+     * @principle Enforces path-based ownership and ensures document ID matches the User ID.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+
+      /**
+       * @description Records of voice commands and AI responses.
+       * @path /users/{userId}/command_logs/{commandLogId}
+       * @allow (create) If userId in data matches the path and the authenticated user.
+       * @deny (update) If the request attempts to change the userId field.
+       * @principle Validates relational integrity between the path and internal document data.
+       */
+      match /command_logs/{commandLogId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description User-owned smart home device configurations.
+       * @path /users/{userId}/smart_devices/{smartDeviceId}
+       * @allow (list) Owner viewing their own registered devices.
+       * @deny (create) If the userId field in the device document is missing or incorrect.
+       * @principle Restricts device management to the verified owner.
+       */
+      match /smart_devices/{smartDeviceId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description User-defined automation workflows.
+       * @path /users/{userId}/automations/{automationId}
+       * @allow (delete) Owner removing an automation they created.
+       * @deny (get) If user A tries to access user B's automation path.
+       * @principle Ensures private access to personalized productivity tools.
+       */
+      match /automations/{automationId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
+
+        /**
+         * @description Individual steps within an automation workflow.
+         * @path /users/{userId}/automations/{automationId}/actions/{actionId}
+         * @allow (create) If path parameters (userId) match the authenticated user.
+         * @deny (update) If action data is modified by anyone other than the parent automation owner.
+         * @principle Deeply nested path-based security utilizing parent wildcards.
+         */
+        match /actions/{actionId} {
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && request.resource.data.automationId == automationId;
+          allow update: if isExistingOwner(userId) && request.resource.data.automationId == resource.data.automationId;
+          allow delete: if isExistingOwner(userId);
+        }
+      }
+
+      /**
+       * @description User productivity reminders and task scheduling.
+       * @path /users/{userId}/reminders/{reminderId}
+       * @allow (update) Owner marking a reminder as 'Completed'.
+       * @deny (list) Requests to query reminders across different users.
+       * @principle Enforces data isolation for personal task management.
+       */
+      match /reminders/{reminderId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
+      }
+    }
+  }
+}

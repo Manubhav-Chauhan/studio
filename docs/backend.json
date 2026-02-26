@@ -1,0 +1,471 @@
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user's profile, storing personalized settings, preferences, and feature enablement flags for assistAI. Does not store authentication credentials.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity."
+        },
+        "externalAuthId": {
+          "type": "string",
+          "description": "Reference to the unique identifier from an external authentication system. (Relationship: ExternalAuthSystem 1:1 UserProfile)"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's preferred display name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "preferredLanguage": {
+          "type": "string",
+          "description": "The user's preferred language for interacting with assistAI (e.g., 'en', 'hi', 'hinglish')."
+        },
+        "personalityMode": {
+          "type": "string",
+          "description": "The selected personality mode for the AI (e.g., 'Professional', 'Friendly', 'Casual')."
+        },
+        "isVoiceAuthEnabled": {
+          "type": "boolean",
+          "description": "Flag indicating if voice authentication is enabled for this user."
+        },
+        "isFaceUnlockEnabled": {
+          "type": "boolean",
+          "description": "Flag indicating if face unlock is enabled for this user."
+        },
+        "isCameraAccessGranted": {
+          "type": "boolean",
+          "description": "Flag indicating if the user has granted camera access to the assistAI application."
+        },
+        "isVisualRecognitionEnabled": {
+          "type": "boolean",
+          "description": "Flag indicating if the visual recognition feature is enabled for this user."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user profile was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the user profile was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "externalAuthId",
+        "displayName",
+        "email",
+        "preferredLanguage",
+        "isVoiceAuthEnabled",
+        "isFaceUnlockEnabled",
+        "isCameraAccessGranted",
+        "isVisualRecognitionEnabled",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CommandLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CommandLog",
+      "type": "object",
+      "description": "Records the history of voice commands issued by a user and the actions performed by assistAI.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the CommandLog entry."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who issued the command. (Relationship: UserProfile 1:N CommandLog)"
+        },
+        "commandText": {
+          "type": "string",
+          "description": "The raw transcribed voice command from the user."
+        },
+        "interpretedIntent": {
+          "type": "string",
+          "description": "The AI's determined intent of the command (e.g., 'openApp', 'setVolume', 'sendMessage')."
+        },
+        "extractedEntities": {
+          "type": "string",
+          "description": "A JSON string containing key-value pairs of entities extracted from the command (e.g., '{\"appName\": \"Chrome\"}', '{\"volumeLevel\": 50}')."
+        },
+        "actionPerformed": {
+          "type": "string",
+          "description": "A descriptive string of the action assistAI took in response to the command (e.g., 'Opened Google Chrome', 'Volume set to 50%')."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The timestamp when the command was processed.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The execution status of the command (e.g., 'Success', 'Failed', 'PendingConfirmation')."
+        },
+        "responseGiven": {
+          "type": "string",
+          "description": "The verbal or textual response provided by assistAI to the user."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "commandText",
+        "interpretedIntent",
+        "actionPerformed",
+        "timestamp",
+        "status",
+        "responseGiven"
+      ]
+    },
+    "SmartDevice": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SmartDevice",
+      "type": "object",
+      "description": "Stores details and configuration for smart home devices integrated with assistAI.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the SmartDevice entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who owns this smart device. (Relationship: UserProfile 1:N SmartDevice)"
+        },
+        "name": {
+          "type": "string",
+          "description": "A user-friendly name for the smart device (e.g., 'Living Room Light', 'Bedroom AC')."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of smart device (e.g., 'Smart Bulb', 'Smart Plug', 'AC', 'TV')."
+        },
+        "protocol": {
+          "type": "string",
+          "description": "The communication protocol or platform used for this device (e.g., 'MQTT', 'Google Home', 'Alexa', 'Home Assistant')."
+        },
+        "connectionDetails": {
+          "type": "string",
+          "description": "A JSON string containing specific connection parameters or identifiers for the device (e.g., IP address, device ID, API key reference). Sensitive data should be handled securely external to this model."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current operational status of the device (e.g., 'Online', 'Offline', 'Error')."
+        },
+        "lastKnownState": {
+          "type": "string",
+          "description": "A JSON string representing the last known state of the device (e.g., '{\"power\": \"on\", \"brightness\": 80, \"color\": \"#FFFFFF\"}')."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the smart device was added.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the smart device details were last updated or its state changed.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "type",
+        "protocol",
+        "connectionDetails",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Automation": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Automation",
+      "type": "object",
+      "description": "Defines a user-created workflow macro, allowing multiple actions to be triggered by a single command.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Automation entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who created this automation. (Relationship: UserProfile 1:N Automation)"
+        },
+        "name": {
+          "type": "string",
+          "description": "A user-friendly name for the automation (e.g., 'Start Work Mode', 'Good Morning Routine')."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of what the automation does."
+        },
+        "triggerPhrase": {
+          "type": "string",
+          "description": "The specific voice command or phrase that triggers this automation."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Indicates if the automation is currently active and can be triggered."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the automation was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the automation was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "triggerPhrase",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AutomationAction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AutomationAction",
+      "type": "object",
+      "description": "Represents a single step or action within a larger user-defined automation workflow.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the AutomationAction entity."
+        },
+        "automationId": {
+          "type": "string",
+          "description": "Reference to the Automation this action belongs to. (Relationship: Automation 1:N AutomationAction)"
+        },
+        "order": {
+          "type": "number",
+          "description": "The sequential order of this action within its automation."
+        },
+        "actionType": {
+          "type": "string",
+          "description": "The type of action to perform (e.g., 'openApp', 'setVolume', 'sendNotification', 'controlSmartDevice')."
+        },
+        "actionParameters": {
+          "type": "string",
+          "description": "A JSON string containing specific parameters required for the action (e.g., '{\"appName\": \"Slack\"}', '{\"deviceId\": \"device123\", \"command\": \"turnOn\", \"value\": \"on\"}')."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of this specific action (e.g., 'Open Slack', 'Turn on living room light')."
+        }
+      },
+      "required": [
+        "id",
+        "automationId",
+        "order",
+        "actionType",
+        "actionParameters",
+        "description"
+      ]
+    },
+    "Reminder": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Reminder",
+      "type": "object",
+      "description": "Stores user-set reminders for productivity and task management.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Reminder entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who created this reminder. (Relationship: UserProfile 1:N Reminder)"
+        },
+        "message": {
+          "type": "string",
+          "description": "The message or content of the reminder (e.g., 'Take a 15-minute break', 'Call mom')."
+        },
+        "scheduledTime": {
+          "type": "string",
+          "description": "The specific date and time when the reminder is scheduled to trigger.",
+          "format": "date-time"
+        },
+        "isRecurring": {
+          "type": "boolean",
+          "description": "Flag indicating if the reminder is a recurring event."
+        },
+        "recurrencePattern": {
+          "type": "string",
+          "description": "A string defining the recurrence pattern for recurring reminders (e.g., 'daily', 'weekly', 'every 3 hours', 'cron-like expression')."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the reminder (e.g., 'Pending', 'Completed', 'Dismissed')."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the reminder was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the reminder was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "message",
+        "scheduledTime",
+        "isRecurring",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores individual user profiles. The document ID ({userId}) must match the user's Firebase Authentication UID. The 'externalAuthId' field within the document also stores this UID, ensuring authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user, corresponding to Firebase Authentication UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/command_logs/{commandLogId}",
+        "definition": {
+          "entityName": "CommandLog",
+          "schema": {
+            "$ref": "#/backend/entities/CommandLog"
+          },
+          "description": "Records voice command history for a specific user. Includes denormalized 'userId' for authorization independence; the path already contains the user ID.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "commandLogId",
+              "description": "The unique identifier for a specific command log entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/smart_devices/{smartDeviceId}",
+        "definition": {
+          "entityName": "SmartDevice",
+          "schema": {
+            "$ref": "#/backend/entities/SmartDevice"
+          },
+          "description": "Stores smart device configurations and states owned by a specific user. Includes denormalized 'userId' for authorization independence; the path already contains the user ID.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "smartDeviceId",
+              "description": "The unique identifier for a specific smart device."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/automations/{automationId}",
+        "definition": {
+          "entityName": "Automation",
+          "schema": {
+            "$ref": "#/backend/entities/Automation"
+          },
+          "description": "Defines user-created workflow macros. Includes denormalized 'userId' for authorization independence; the path already contains the user ID.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "automationId",
+              "description": "The unique identifier for a specific automation."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/automations/{automationId}/actions/{actionId}",
+        "definition": {
+          "entityName": "AutomationAction",
+          "schema": {
+            "$ref": "#/backend/entities/AutomationAction"
+          },
+          "description": "Represents individual actions within an automation. Must include denormalized 'userId' (from the parent automation) and 'automationId' for complete authorization independence without `get()` calls, though the path already provides these contexts.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user, inherited from the parent Automation."
+            },
+            {
+              "name": "automationId",
+              "description": "The unique identifier of the parent automation."
+            },
+            {
+              "name": "actionId",
+              "description": "The unique identifier for a specific automation action."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/reminders/{reminderId}",
+        "definition": {
+          "entityName": "Reminder",
+          "schema": {
+            "$ref": "#/backend/entities/Reminder"
+          },
+          "description": "Stores user-set reminders. Includes denormalized 'userId' for authorization independence; the path already contains the user ID.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "reminderId",
+              "description": "The unique identifier for a specific reminder."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed following a user-centric, path-based ownership model to ensure strong security, scalability, and debuggability. All user-specific data is nested under a top-level `/users/{userId}` collection, where `{userId}` directly corresponds to the authenticated Firebase `request.auth.uid`.\n\n**Authorization Independence (CRITICAL):**\n1.  **User Profiles (`/users/{userId}`):** The `UserProfile` document itself is stored at `/users/{userId}`. Access to this document is controlled by ensuring `request.auth.uid == userId` from the path. The `externalAuthId` field within the `UserProfile` document will store the `uid`, implicitly making the document self-referential for authorization without requiring any `get()` calls.\n2.  **Subcollections (`/users/{userId}/command_logs`, `/users/{userId}/smart_devices`, `/users/{userId}/automations`, `/users/{userId}/reminders`):** For all direct subcollections of a user profile, the `userId` is inherently part of the document path. This means that rules can directly compare `request.auth.uid` with the `{userId}` wildcard in the path, ensuring that only the owner can access their data. The `userId` field is also explicitly present in these documents (e.g., `CommandLog.userId`), serving as a denormalized field that *could* be used for validation but is primarily for data integrity, as the path itself provides the necessary authorization context without `get()` calls.\n3.  **Nested Subcollections (`/users/{userId}/automations/{automationId}/actions`):** The `AutomationAction` entity is a subcollection of `Automation`. By nesting it under the user's path (`/users/{userId}/automations/{automationId}/actions/{actionId}`), the `userId` (owner of the automation) is available directly in the path. To further reinforce Authorization Independence, the `AutomationAction` document must also include the `userId` (denormalized from its parent `Automation` or inferred from the path) and `automationId`. This ensures that a security rule for `AutomationAction` can simply check `request.auth.uid == userId` present in the document or path, without needing a `get()` call to the parent `Automation` document.\n\n**QAPs (Rules are not Filters):**\nThe structural segregation ensures that `list` operations (queries) can be secured efficiently. Since all documents within any user-specific collection (e.g., `/users/{userId}/command_logs`) inherently belong to the `userId` specified in the path, a query like `db.collection('users/{userId}/command_logs').where('timestamp', '>', someTime)` is inherently constrained by `request.auth.uid == userId`. This means that users can only query their *own* data, satisfying the Queryability by Authorization Principle without requiring complex server-side filtering or inefficient security rules that attempt to filter on document content after retrieval. The consistent use of `userId` in the path and within documents allows for straightforward, efficient security rules for both `get` and `list` operations.\n\n**Structural Segregation & Access Modeling:**\nAll data is kept private to the user. There are no 'public' collections mixed with 'private' data, simplifying security rules immensely. The `DBAC` principle is implicitly handled as all authorization is based on `request.auth.uid` and path-based ownership, with no custom claims or global roles defined in this structure. This design strongly adheres to the core principles for a secure, scalable, and debuggable Firestore implementation."
+  }
+}
