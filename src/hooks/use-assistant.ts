@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
@@ -6,7 +5,7 @@ import { processVoiceCommandIntent, type ProcessVoiceCommandIntentOutput } from 
 import { handleConversationalFollowUp } from "@/ai/flows/handle-conversational-follow-up-flow";
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore, useUser } from "@/firebase";
-import { collection, query, where, getDocs, doc, updateDoc, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, where, getDocs, doc } from "firebase/firestore";
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 export type AssistantStatus = "idle" | "listening" | "processing" | "responding";
@@ -30,68 +29,7 @@ export function useAssistant() {
   const db = useFirestore();
   const { user } = useUser();
   const recognitionRef = useRef<any>(null);
-
-  // Initialize Web Speech API
-  useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'en-US';
-
-      recognitionRef.current.onresult = (event: any) => {
-        const transcript = Array.from(event.results)
-          .map((result: any) => result[0])
-          .map((result: any) => result.transcript)
-          .join('');
-        setTranscription(transcript);
-      };
-
-      recognitionRef.current.onend = () => {
-        if (status === "listening") {
-          setStatus("idle");
-        }
-      };
-
-      recognitionRef.current.onerror = (event: any) => {
-        console.error("Speech recognition error", event.error);
-        setStatus("idle");
-      };
-    }
-  }, [status]);
-
-  const executeIntent = useCallback(async (result: ProcessVoiceCommandIntentOutput) => {
-    if (!user || !db) return;
-
-    const { intent, entities } = result;
-    
-    try {
-      switch (intent) {
-        case 'control_smart_bulb': {
-          const devicesRef = collection(db, 'users', user.uid, 'smart_devices');
-          const q = query(devicesRef, where('name', '==', entities?.deviceName || 'Living Room Lamp'));
-          const snapshot = await getDocs(q);
-          
-          if (!snapshot.empty) {
-            const deviceDoc = snapshot.docs[0];
-            updateDocumentNonBlocking(doc(db, deviceDoc.ref.path), {
-              status: entities?.state ? 'Online' : 'Offline',
-              lastKnownState: JSON.stringify({ 
-                power: entities?.state ? 'on' : 'off',
-                brightness: entities?.brightness || 80
-              }),
-              updatedAt: new Date().toISOString()
-            });
-          }
-          break;
-        }
-        // Additional intent executions can be added here
-      }
-    } catch (e) {
-      console.error("Failed to execute intent", e);
-    }
-  }, [user, db]);
+  const transcriptionRef = useRef("");
 
   const processCommand = useCallback(async (text: string) => {
     if (!text.trim() || !user || !db) return;
@@ -144,26 +82,89 @@ export function useAssistant() {
       setStatus("responding");
       setTimeout(() => setStatus("idle"), 3000);
 
-    } catch (error) {
-      console.error("Failed to process command:", error);
+    } catch (error: any) {
+      console.error("Assistant processing error:", error);
       toast({
         variant: "destructive",
         title: "Processing Error",
-        description: "Something went wrong while understanding your command.",
+        description: error.message || "Something went wrong while understanding your command.",
       });
       setStatus("idle");
     }
-  }, [previousContext, user, db, executeIntent, toast]);
+  }, [previousContext, user, db, toast]);
+
+  // Initialize Web Speech API
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0])
+          .map((result: any) => result.transcript)
+          .join('');
+        transcriptionRef.current = transcript;
+        setTranscription(transcript);
+      };
+
+      recognitionRef.current.onend = () => {
+        if (status === "listening") {
+          const finalTranscription = transcriptionRef.current;
+          setStatus("idle");
+          if (finalTranscription) {
+            processCommand(finalTranscription);
+          }
+        }
+      };
+
+      recognitionRef.current.onerror = (event: any) => {
+        console.error("Speech recognition error", event.error);
+        setStatus("idle");
+      };
+    }
+  }, [status, processCommand]);
+
+  const executeIntent = useCallback(async (result: ProcessVoiceCommandIntentOutput) => {
+    if (!user || !db) return;
+
+    const { intent, entities } = result;
+    
+    try {
+      switch (intent) {
+        case 'control_smart_bulb': {
+          const devicesRef = collection(db, 'users', user.uid, 'smart_devices');
+          const q = query(devicesRef, where('name', '==', entities?.deviceName || 'Living Room Lamp'));
+          const snapshot = await getDocs(q);
+          
+          if (!snapshot.empty) {
+            const deviceDoc = snapshot.docs[0];
+            updateDocumentNonBlocking(doc(db, deviceDoc.ref.path), {
+              status: entities?.state ? 'Online' : 'Offline',
+              lastKnownState: JSON.stringify({ 
+                power: entities?.state ? 'on' : 'off',
+                brightness: entities?.brightness || 80
+              }),
+              updatedAt: new Date().toISOString()
+            });
+          }
+          break;
+        }
+      }
+    } catch (e) {
+      console.error("Failed to execute intent", e);
+    }
+  }, [user, db]);
 
   const toggleListening = useCallback(() => {
     if (status === "listening") {
       recognitionRef.current?.stop();
-      setStatus("idle");
-      if (transcription) {
-        processCommand(transcription);
-      }
     } else {
       setTranscription("");
+      transcriptionRef.current = "";
       setStatus("listening");
       try {
         recognitionRef.current?.start();
@@ -172,7 +173,7 @@ export function useAssistant() {
         setStatus("idle");
       }
     }
-  }, [status, transcription, processCommand]);
+  }, [status]);
 
   return {
     status,

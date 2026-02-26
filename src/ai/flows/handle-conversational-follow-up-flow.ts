@@ -75,8 +75,8 @@ Previous Context: "Play some music"
 Current Command: "Which genre?"
 Output: {"nextInstruction": "What genre of music would you like to play?", "isUserClarificationNeeded": true}
 
-Previous Context: "{{previousContext}}"
-Current Command: "{{currentCommand}}"
+Previous Context: "{{{previousContext}}}"
+Current Command: "{{{currentCommand}}}"
 `
 });
 
