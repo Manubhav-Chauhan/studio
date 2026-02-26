@@ -9,7 +9,8 @@ import {
   LayoutDashboard,
   BrainCircuit,
   Eye,
-  LogOut
+  LogOut,
+  Cpu
 } from "lucide-react";
 import { 
   Sidebar, 
@@ -62,6 +63,16 @@ export function AppSidebar({ activeTab, setActiveTab }: AppSidebarProps) {
               >
                 <LayoutDashboard />
                 <span>Assistant</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton 
+                isActive={activeTab === 'aicontrol'} 
+                onClick={() => setActiveTab('aicontrol')}
+                tooltip="AI Control"
+              >
+                <Cpu />
+                <span>AI Control</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>

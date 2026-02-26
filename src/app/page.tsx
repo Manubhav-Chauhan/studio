@@ -8,6 +8,7 @@ import { HistoryPanel } from "@/components/history/HistoryPanel";
 import { SmartHomePanel } from "@/components/smarthome/SmartHomePanel";
 import { AutomationPanel } from "@/components/automation/AutomationPanel";
 import { VisionPanel } from "@/components/vision/VisionPanel";
+import { AIControlPanel } from "@/components/aicontrol/AIControlPanel";
 import { useAssistant } from "@/hooks/use-assistant";
 import { useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
@@ -91,12 +92,13 @@ export default function Home() {
                   onToggleListening={assistant.toggleListening}
                 />
               )}
+              {activeTab === 'aicontrol' && <AIControlPanel />}
               {activeTab === 'history' && <HistoryPanel history={assistant.history} />}
               {activeTab === 'devices' && <SmartHomePanel />}
               {activeTab === 'automations' && <AutomationPanel />}
               {activeTab === 'vision' && <VisionPanel />}
 
-              {activeTab === 'assistant' && (
+              {(activeTab === 'assistant' || activeTab === 'aicontrol') && (
                 <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-6 px-8 py-3 bg-muted/20 backdrop-blur-xl border border-muted/30 rounded-2xl">
                   <div className="flex items-center gap-2">
                     <Monitor className="h-4 w-4 text-muted-foreground" />
