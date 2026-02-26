@@ -1,1 +1,5 @@
-// Flows will be imported for their side effects in this file.
+import { config } from 'dotenv';
+config();
+
+import '@/ai/flows/handle-conversational-follow-up-flow.ts';
+import '@/ai/flows/process-voice-command-intent-flow.ts';
