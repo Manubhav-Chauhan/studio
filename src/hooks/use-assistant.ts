@@ -1,9 +1,13 @@
+
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { processVoiceCommandIntent, type ProcessVoiceCommandIntentOutput } from "@/ai/flows/process-voice-command-intent-flow";
 import { handleConversationalFollowUp } from "@/ai/flows/handle-conversational-follow-up-flow";
 import { useToast } from "@/hooks/use-toast";
+import { useFirestore, useUser } from "@/firebase";
+import { collection, query, where, getDocs, doc, updateDoc, addDoc, serverTimestamp } from "firebase/firestore";
+import { addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 export type AssistantStatus = "idle" | "listening" | "processing" | "responding";
 
@@ -23,13 +27,77 @@ export function useAssistant() {
   const [history, setHistory] = useState<CommandHistoryItem[]>([]);
   const [previousContext, setPreviousContext] = useState<string>("");
   const { toast } = useToast();
+  const db = useFirestore();
+  const { user } = useUser();
+  const recognitionRef = useRef<any>(null);
+
+  // Initialize Web Speech API
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0])
+          .map((result: any) => result.transcript)
+          .join('');
+        setTranscription(transcript);
+      };
+
+      recognitionRef.current.onend = () => {
+        if (status === "listening") {
+          setStatus("idle");
+        }
+      };
+
+      recognitionRef.current.onerror = (event: any) => {
+        console.error("Speech recognition error", event.error);
+        setStatus("idle");
+      };
+    }
+  }, [status]);
+
+  const executeIntent = useCallback(async (result: ProcessVoiceCommandIntentOutput) => {
+    if (!user || !db) return;
+
+    const { intent, entities } = result;
+    
+    try {
+      switch (intent) {
+        case 'control_smart_bulb': {
+          const devicesRef = collection(db, 'users', user.uid, 'smart_devices');
+          const q = query(devicesRef, where('name', '==', entities?.deviceName || 'Living Room Lamp'));
+          const snapshot = await getDocs(q);
+          
+          if (!snapshot.empty) {
+            const deviceDoc = snapshot.docs[0];
+            updateDocumentNonBlocking(doc(db, deviceDoc.ref.path), {
+              status: entities?.state ? 'Online' : 'Offline',
+              lastKnownState: JSON.stringify({ 
+                power: entities?.state ? 'on' : 'off',
+                brightness: entities?.brightness || 80
+              }),
+              updatedAt: new Date().toISOString()
+            });
+          }
+          break;
+        }
+        // Additional intent executions can be added here
+      }
+    } catch (e) {
+      console.error("Failed to execute intent", e);
+    }
+  }, [user, db]);
 
   const processCommand = useCallback(async (text: string) => {
-    if (!text.trim()) return;
+    if (!text.trim() || !user || !db) return;
 
     setStatus("processing");
     try {
-      // Resolve context first
       const followUp = await handleConversationalFollowUp({
         currentCommand: text,
         previousContext: previousContext,
@@ -43,12 +111,25 @@ export function useAssistant() {
         return;
       }
 
-      // Process intent
       const result = await processVoiceCommandIntent({ command: resolvedCommand });
-      
       const responseText = generateResponseText(result);
+      
       setLastResponse(responseText);
       setPreviousContext(resolvedCommand);
+
+      // Execute the actual task
+      await executeIntent(result);
+
+      // Log the command
+      addDocumentNonBlocking(collection(db, 'users', user.uid, 'command_logs'), {
+        userId: user.uid,
+        commandText: text,
+        interpretedIntent: result.intent,
+        actionPerformed: responseText,
+        timestamp: new Date().toISOString(),
+        status: "Success",
+        responseGiven: responseText
+      });
 
       const newItem: CommandHistoryItem = {
         id: Math.random().toString(36).substring(7),
@@ -61,8 +142,6 @@ export function useAssistant() {
 
       setHistory((prev) => [newItem, ...prev]);
       setStatus("responding");
-      
-      // Simulate speech finished
       setTimeout(() => setStatus("idle"), 3000);
 
     } catch (error) {
@@ -74,41 +153,24 @@ export function useAssistant() {
       });
       setStatus("idle");
     }
-  }, [previousContext, history, toast]);
+  }, [previousContext, user, db, executeIntent, toast]);
 
   const toggleListening = useCallback(() => {
     if (status === "listening") {
+      recognitionRef.current?.stop();
       setStatus("idle");
-      // Simulate receiving command after stopping
       if (transcription) {
         processCommand(transcription);
       }
     } else {
-      setStatus("listening");
       setTranscription("");
-      // Mock transcription logic
-      const mockPhrases = [
-        "Open Chrome",
-        "Set volume to 50",
-        "Turn off the lights",
-        "Search for resume",
-        "Schedule a meeting for tomorrow at 5pm",
-        "Actually make it 6pm"
-      ];
-      const randomPhrase = mockPhrases[Math.floor(Math.random() * mockPhrases.length)];
-      
-      let i = 0;
-      const interval = setInterval(() => {
-        setTranscription(randomPhrase.substring(0, i + 1));
-        i++;
-        if (i === randomPhrase.length) {
-          clearInterval(interval);
-          setTimeout(() => {
-            setStatus("idle");
-            processCommand(randomPhrase);
-          }, 1000);
-        }
-      }, 50);
+      setStatus("listening");
+      try {
+        recognitionRef.current?.start();
+      } catch (e) {
+        console.error("Failed to start recognition", e);
+        setStatus("idle");
+      }
     }
   }, [status, transcription, processCommand]);
 

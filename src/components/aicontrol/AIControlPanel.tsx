@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -21,6 +22,9 @@ import { analyzeImage } from "@/ai/flows/analyze-image-flow";
 import { Badge } from "@/components/ui/badge";
 import { Waveform } from "@/components/assistant/Waveform";
 import { cn } from "@/lib/utils";
+import { useFirestore, useUser } from "@/firebase";
+import { collection, query, where, getDocs, doc } from "firebase/firestore";
+import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 export function AIControlPanel() {
   const [isControlActive, setIsControlActive] = useState(false);
@@ -31,6 +35,8 @@ export function AIControlPanel() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
+  const db = useFirestore();
+  const { user } = useUser();
 
   // Handle Permissions
   useEffect(() => {
@@ -60,7 +66,7 @@ export function AIControlPanel() {
   useEffect(() => {
     let intervalId: any;
 
-    if (isControlActive && hasCameraPermission) {
+    if (isControlActive && hasCameraPermission && user && db) {
       intervalId = setInterval(async () => {
         if (isProcessing) return;
         
@@ -79,7 +85,7 @@ export function AIControlPanel() {
           try {
             const result = await analyzeImage({ 
               photoDataUri: dataUri,
-              prompt: "Identify if the user is making a gesture (thumbs up, hand wave) or holding a common object (phone, coffee mug). Map them to app actions."
+              prompt: "Identify if the user is making a gesture (thumbs up, hand wave) or holding a common object (phone, coffee mug). Map them to app actions. Return ONLY JSON."
             });
 
             if (result.suggestedActions.length > 0) {
@@ -87,9 +93,23 @@ export function AIControlPanel() {
               const mappedAction = result.suggestedActions[0];
               
               setLastAction({ trigger: detectedTrigger, action: mappedAction });
+              
+              // Functional Mapping: If coffee mug is detected, turn on a light
+              if (detectedTrigger.toLowerCase().includes('mug')) {
+                const devicesRef = collection(db, 'users', user.uid, 'smart_devices');
+                const q = query(devicesRef, where('name', '==', 'Living Room Lamp'));
+                const snapshot = await getDocs(q);
+                if (!snapshot.empty) {
+                  updateDocumentNonBlocking(doc(db, snapshot.docs[0].ref.path), {
+                    status: 'Online',
+                    updatedAt: new Date().toISOString()
+                  });
+                }
+              }
+
               toast({
-                title: "AI Action Triggered",
-                description: `Detected ${detectedTrigger} -> Executing: ${mappedAction}`,
+                title: "AI Sensing Triggered",
+                description: `Detected ${detectedTrigger} -> ${mappedAction}`,
               });
             }
           } catch (e) {
@@ -98,11 +118,11 @@ export function AIControlPanel() {
             setIsProcessing(false);
           }
         }
-      }, 5000); // Sensing every 5 seconds for prototype stability
+      }, 8000); // Sensing every 8 seconds for real functional prototype balance
     }
 
     return () => clearInterval(intervalId);
-  }, [isControlActive, hasCameraPermission, isProcessing, toast]);
+  }, [isControlActive, hasCameraPermission, isProcessing, toast, user, db]);
 
   return (
     <div className="p-6 h-full flex flex-col space-y-6 overflow-y-auto">
@@ -209,7 +229,7 @@ export function AIControlPanel() {
               {[
                 { t: "Thumbs Up", a: "Confirm Task" },
                 { t: "Hand Wave", a: "Cancel/Dismiss" },
-                { t: "Coffee Mug", a: "Start Morning Workflow" }
+                { t: "Coffee Mug", a: "Turn on Smart Lamp" }
               ].map((m, i) => (
                 <div key={i} className="flex items-center justify-between text-[11px] px-2 py-1 rounded hover:bg-muted/20 transition-colors">
                   <span className="text-muted-foreground">{m.t}</span>
