@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -11,6 +12,8 @@ import { BrainCircuit, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase';
 import { useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -19,6 +22,7 @@ export default function AuthPage() {
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (user && !isUserLoading) {
@@ -29,9 +33,21 @@ export default function AuthPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isLogin) {
-      initiateEmailSignIn(auth, email, password);
+      signInWithEmailAndPassword(auth, email, password).catch((error: any) => {
+        toast({
+          variant: "destructive",
+          title: "Sign In Failed",
+          description: error.message || "Invalid credentials provided.",
+        });
+      });
     } else {
-      initiateEmailSignUp(auth, email, password);
+      createUserWithEmailAndPassword(auth, email, password).catch((error: any) => {
+        toast({
+          variant: "destructive",
+          title: "Sign Up Failed",
+          description: error.message || "Could not create account.",
+        });
+      });
     }
   };
 
